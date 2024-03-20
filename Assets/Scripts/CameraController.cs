@@ -7,7 +7,7 @@ public class CameraController : MonoBehaviour
 {
     public Transform followObj;
     public float followSpeed = 10f;
-    public float sensitivity = 200f;
+    public float sensitivity = 300f;
     public float clampAngle = 70f;
 
     private float rotX;

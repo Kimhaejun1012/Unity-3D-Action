@@ -9,7 +9,6 @@ public class PlayerMovement : MonoBehaviour
     public float runSpeed = 15f;
     public float jumpPower = 5f;
     public float dashPower = 5f;
-
     public float finalSpeed;
 
     private bool isRun;
@@ -23,38 +22,43 @@ public class PlayerMovement : MonoBehaviour
     Vector3 velocity = Vector3.zero;
 
     Vector3 dir = Vector3.zero;
-
+    Vector3 moveVec = Vector3.zero;
     Animator animator;
     Rigidbody rb;
 
-    //CharacterController characterController;
-
-
-    // Start is called before the first frame update
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
         _cam = Camera.main;
+
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
-    // Update is called once per frame
     void Update()
     {
+
         dir.x = Input.GetAxisRaw("Horizontal");
         dir.z = Input.GetAxisRaw("Vertical");
-        //dir.Normalize();
-
-        //CheckGround();
-        //if (Input.GetButtonDown("Jump") && isGround/*&& animator.GetCurrentAnimatorStateInfo(0).IsName("Jump")*/)
-        //{
-        //    Vector3 jump = Vector3.up * jumpPower;
-        //    rb.AddForce(jump, ForceMode.VelocityChange);
-        //    //animator.SetTrigger("Jump");
-        //}
-
 
         isRun = Input.GetButton("Dash");
+
+        finalSpeed = isRun ? runSpeed : walkSpeed;
+
+        Vector3 moveH = Vector3.Scale(_cam.transform.right, new Vector3(1, 0, 1)) * dir.x;
+        Vector3 moveV = Vector3.Scale(_cam.transform.forward, new Vector3(1, 0, 1)) * dir.z;
+
+        moveVec = (moveH + moveV).normalized;
+        //dir.Normalize();
+
+        CheckGround();
+        if (Input.GetButtonDown("Jump") && isGround/*&& animator.GetCurrentAnimatorStateInfo(0).IsName("Jump")*/)
+        {
+            Vector3 jump = Vector3.up * jumpPower +  moveVec * finalSpeed;
+            rb.AddForce(jump, ForceMode.VelocityChange);
+            animator.SetTrigger("Jump");
+        }
 
         animator.SetBool("Walk", dir != Vector3.zero);
         animator.SetBool("Run", isRun);
@@ -67,8 +71,6 @@ public class PlayerMovement : MonoBehaviour
         {
             toggleCamRotation = false;
         }
-
-        Debug.DrawRay(_cam.transform.position, new Vector3(_cam.transform.forward.x, 0, _cam.transform.forward.z).normalized, Color.red);
     }
 
     private void LateUpdate()
@@ -84,25 +86,23 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        Vector3 moveH = Vector3.Scale(_cam.transform.right, new Vector3(1,0,1)) * dir.x;
-        Vector3 moveV = Vector3.Scale(_cam.transform.forward, new Vector3(1,0,1)) * dir.z;
-        Vector3 moveVec = (moveH + moveV).normalized;
+        if(isGround)
+        {
+            rb.MovePosition(transform.position + moveVec * finalSpeed * Time.fixedDeltaTime);
 
-        rb.MovePosition(transform.position + moveVec * (isRun ? runSpeed : walkSpeed) * Time.fixedDeltaTime);
+            if (dir != Vector3.zero)
+            {
+                Vector3 lookForward = _cam.transform.forward * dir.z;
+                Vector3 lookRight = _cam.transform.right * dir.x;
+                Vector3 rotate = Vector3.Scale((lookForward + lookRight).normalized, new Vector3(1, 0, 1));
 
-
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(rotate), Time.fixedDeltaTime * rotSpeed);
+            }
+        }
         /*
          캐릭터 회전은 wasd키 눌렀을 때 카메라의 forward 받아와서
          */
 
-        if (dir != Vector3.zero)
-        {
-            Vector3 lookForward = _cam.transform.forward * dir.z;
-            Vector3 lookRight = _cam.transform.right * dir.x;
-            Vector3 rotate = Vector3.Scale((lookForward + lookRight).normalized, new Vector3(1, 0, 1));
-
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(rotate), Time.fixedDeltaTime * rotSpeed);
-        }
 
         //if (!toggleCamRotation)
         //{
@@ -125,8 +125,6 @@ public class PlayerMovement : MonoBehaviour
         //}
 
         //velocity = (moveHorizontal + moveVertical).normalized * (isRun ? runSpeed : walkSpeed);
-
-
 
         //rb.velocity = velocity;
 
